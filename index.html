@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lista de Tarefas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6 50%, #ec4899);
+  }
+  .card {
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.2);
+  }
+  h1 { font-size: 1.6rem; color: #1f2937; margin-bottom: 4px; }
+  .sub { color: #6b7280; font-size: .9rem; margin-bottom: 20px; }
+  form { display: flex; gap: 8px; margin-bottom: 20px; }
+  input[type="text"] {
+    flex: 1;
+    padding: 12px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input[type="text"]:focus { border-color: #6366f1; }
+  button.add {
+    padding: 0 20px;
+    border: none;
+    border-radius: 12px;
+    background: #6366f1;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+  }
+  button.add:hover { background: #4f46e5; }
+  button.add:active { transform: scale(.96); }
+  ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f9fafb;
+    border-radius: 12px;
+    animation: in .2s ease;
+  }
+  @keyframes in { from { opacity: 0; transform: translateY(-6px); } }
+  li input[type="checkbox"] {
+    width: 20px; height: 20px;
+    accent-color: #6366f1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  li span { flex: 1; color: #1f2937; word-break: break-word; }
+  li.done span { text-decoration: line-through; color: #9ca3af; }
+  li button.del {
+    border: none;
+    background: none;
+    color: #9ca3af;
+    font-size: 1.3rem;
+    cursor: pointer;
+    line-height: 1;
+  }
+  li button.del:hover { color: #ef4444; }
+  .empty { text-align: center; color: #9ca3af; padding: 16px 0; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Minhas Tarefas</h1>
+    <p class="sub" id="contador"></p>
+    <form id="form">
+      <input type="text" id="campo" placeholder="Nova tarefa..." autocomplete="off" required>
+      <button class="add" type="submit">Adicionar</button>
+    </form>
+    <ul id="lista"></ul>
+  </main>
+
+<script>
+  const form = document.getElementById('form');
+  const campo = document.getElementById('campo');
+  const lista = document.getElementById('lista');
+  const contador = document.getElementById('contador');
+
+  let tarefas = [];
+  try { tarefas = JSON.parse(localStorage.getItem('tarefas')) || []; } catch (e) {}
+
+  function salvar() {
+    try { localStorage.setItem('tarefas', JSON.stringify(tarefas)); } catch (e) {}
+  }
+
+  function render() {
+    lista.innerHTML = '';
+    if (!tarefas.length) {
+      lista.innerHTML = '<li class="empty" style="justify-content:center;background:none">Nenhuma tarefa ainda ✨</li>';
+    }
+    tarefas.forEach((t, i) => {
+      const li = document.createElement('li');
+      if (t.feita) li.className = 'done';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = t.feita;
+      cb.onchange = () => { t.feita = cb.checked; salvar(); render(); };
+
+      const span = document.createElement('span');
+      span.textContent = t.texto;
+
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = '×';
+      del.title = 'Remover';
+      del.onclick = () => { tarefas.splice(i, 1); salvar(); render(); };
+
+      li.append(cb, span, del);
+      lista.appendChild(li);
+    });
+    const pend = tarefas.filter(t => !t.feita).length;
+    contador.textContent = tarefas.length
+      ? `${pend} pendente${pend !== 1 ? 's' : ''} de ${tarefas.length}`
+      : 'Organize seu dia';
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const texto = campo.value.trim();
+    if (!texto) return;
+    tarefas.push({ texto, feita: false });
+    campo.value = '';
+    salvar();
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
