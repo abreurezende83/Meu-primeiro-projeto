@@ -13,7 +13,7 @@
     justify-content: center;
     padding: 16px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6 50%, #ec4899);
+    background: linear-gradient(135deg, #2563eb, #0ea5e9 50%, #10b981);
   }
   .card {
     width: 100%;
@@ -25,9 +25,9 @@
   }
   h1 { font-size: 1.6rem; color: #1f2937; margin-bottom: 4px; }
   .sub { color: #6b7280; font-size: .9rem; margin-bottom: 20px; }
-  form { display: flex; gap: 8px; margin-bottom: 20px; }
-  input[type="text"] {
-    flex: 1;
+  form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  input[type="text"], input[type="date"] {
+    flex: 1 1 100%;
     padding: 12px 14px;
     border: 2px solid #e5e7eb;
     border-radius: 12px;
@@ -35,19 +35,20 @@
     outline: none;
     transition: border-color .2s;
   }
-  input[type="text"]:focus { border-color: #6366f1; }
+  input[type="date"] { flex: 1 1 0; min-width: 0; color: #374151; font-family: inherit; }
+  input[type="text"]:focus, input[type="date"]:focus { border-color: #2563eb; }
   button.add {
-    padding: 0 20px;
+    padding: 12px 20px;
     border: none;
     border-radius: 12px;
-    background: #6366f1;
+    background: #2563eb;
     color: #fff;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: background .2s, transform .1s;
   }
-  button.add:hover { background: #4f46e5; }
+  button.add:hover { background: #1d4ed8; }
   button.add:active { transform: scale(.96); }
   ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
   li {
@@ -62,12 +63,12 @@
   @keyframes in { from { opacity: 0; transform: translateY(-6px); } }
   li input[type="checkbox"] {
     width: 20px; height: 20px;
-    accent-color: #6366f1;
+    accent-color: #10b981;
     cursor: pointer;
     flex-shrink: 0;
   }
-  li span { flex: 1; color: #1f2937; word-break: break-word; }
-  li.done span { text-decoration: line-through; color: #9ca3af; }
+  li .texto { color: #1f2937; word-break: break-word; }
+  li.done .texto { text-decoration: line-through; color: #9ca3af; }
   li button.del {
     border: none;
     background: none;
@@ -77,6 +78,25 @@
     line-height: 1;
   }
   li button.del:hover { color: #ef4444; }
+  .info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .venc { font-size: .8rem; color: #0284c7; }
+  .venc.atrasada { color: #ef4444; font-weight: 600; }
+  li.done .venc { color: #9ca3af; font-weight: 400; }
+  .limpar {
+    margin-top: 16px;
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #10b981;
+    border-radius: 12px;
+    background: none;
+    color: #059669;
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .limpar:hover { background: #10b981; color: #fff; }
+  .limpar[hidden] { display: none; }
   .empty { text-align: center; color: #9ca3af; padding: 16px 0; }
 </style>
 </head>
@@ -86,14 +106,18 @@
     <p class="sub" id="contador"></p>
     <form id="form">
       <input type="text" id="campo" placeholder="Nova tarefa..." autocomplete="off" required>
+      <input type="date" id="data" title="Data de vencimento" aria-label="Data de vencimento">
       <button class="add" type="submit">Adicionar</button>
     </form>
     <ul id="lista"></ul>
+    <button class="limpar" id="limpar" type="button" hidden>Apagar concluídas</button>
   </main>
 
 <script>
   const form = document.getElementById('form');
   const campo = document.getElementById('campo');
+  const data = document.getElementById('data');
+  const limpar = document.getElementById('limpar');
   const lista = document.getElementById('lista');
   const contador = document.getElementById('contador');
 
@@ -102,6 +126,12 @@
 
   function salvar() {
     try { localStorage.setItem('tarefas', JSON.stringify(tarefas)); } catch (e) {}
+  }
+
+  function hoje() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
 
   function render() {
@@ -118,8 +148,23 @@
       cb.checked = t.feita;
       cb.onchange = () => { t.feita = cb.checked; salvar(); render(); };
 
+      const info = document.createElement('div');
+      info.className = 'info';
       const span = document.createElement('span');
+      span.className = 'texto';
       span.textContent = t.texto;
+      info.appendChild(span);
+      if (t.data) {
+        const v = document.createElement('span');
+        v.className = 'venc';
+        const [a, m, d] = t.data.split('-');
+        v.textContent = 'Vence em ' + d + '/' + m + '/' + a;
+        if (!t.feita && t.data < hoje()) {
+          v.classList.add('atrasada');
+          v.textContent += ' (atrasada)';
+        }
+        info.appendChild(v);
+      }
 
       const del = document.createElement('button');
       del.className = 'del';
@@ -127,9 +172,10 @@
       del.title = 'Remover';
       del.onclick = () => { tarefas.splice(i, 1); salvar(); render(); };
 
-      li.append(cb, span, del);
+      li.append(cb, info, del);
       lista.appendChild(li);
     });
+    limpar.hidden = !tarefas.some(t => t.feita);
     const pend = tarefas.filter(t => !t.feita).length;
     contador.textContent = tarefas.length
       ? `${pend} pendente${pend !== 1 ? 's' : ''} de ${tarefas.length}`
@@ -140,8 +186,15 @@
     e.preventDefault();
     const texto = campo.value.trim();
     if (!texto) return;
-    tarefas.push({ texto, feita: false });
+    tarefas.push({ texto, feita: false, data: data.value });
     campo.value = '';
+    data.value = '';
+    salvar();
+    render();
+  });
+
+  limpar.addEventListener('click', () => {
+    tarefas = tarefas.filter(t => !t.feita);
     salvar();
     render();
   });
